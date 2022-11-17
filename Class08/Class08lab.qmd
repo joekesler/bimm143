@@ -1,0 +1,207 @@
+---
+title: "Class 8"
+author: "Joe Kesler"
+format: html
+---
+# 1.Preparing the data
+
+Data is online here: https://bioboot.github.io/bimm143_S20/class-material/WisconsinCancer.csv
+```{r}
+fna.data <- "WisconsinCancer.csv"
+wisc.df <- read.csv(fna.data, row.names = 1)
+head(wisc.df)
+```
+Removing the first column (the expert diagnosis)
+```{r}
+wisc.data <- wisc.df[,-1]
+diagnosis <- as.factor(wisc.df[,1])
+```
+
+> Q1. How many observations in this dataset?
+
+```{r}
+dim(wisc.data)
+```
+
+There are 569 observations.
+
+> Q2. How many of the observations hafve a malignant diagnosis
+
+```{r}
+table(wisc.df$diagnosis)
+```
+There are 212 malignant observations.
+
+> Q3. How many variables/features in the data are suffixed with _mean?
+
+```{r}
+colnames(wisc.data)
+```
+The function grep could be useful here. How does it work? It searches for matches to argument pattern within each element of a vector.
+```{r}
+length(grep(pattern = "_mean", colnames(wisc.data) ))
+```
+There are 10 variables in the data suffixed with _mean.
+
+# 2. Principal Component Analysis
+
+Checking the means and standard deviations to see if we need to scale the data:
+```{r}
+colMeans(wisc.data)
+apply(wisc.data,2,sd)
+```
+Now that we know we need to scale it, lets run the PCA
+
+```{r}
+wisc.pr <- prcomp(wisc.data, scale=TRUE)
+summary(wisc.pr)
+```
+> Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+44% of the original variance is captured by the first principal components.
+
+> Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+You get more than 70% of the original variance by PCA 3.
+
+> Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+You get at least 90% of the original variance in the data by PCA 7 
+
+Now lets create a simple plot of our pca results:
+
+```{r}
+biplot(wisc.pr)
+```
+Ew
+> Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+This plot is ugly as sin. It's difficult to understand because everything is piled on top of one another and you can't distinguish any individual points from anything else. It just looks like noise.
+
+Lets make a better plot
+```{r}
+plot(wisc.pr$x[,1],wisc.pr$x[,2], col = diagnosis)
+```
+> Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+plot(wisc.pr$x[,1],wisc.pr$x[,3], col = diagnosis)
+```
+I notice that benign and malignant are slightly less separate than they were in PCA1 vs PCA2.
+
+Now lets make a nice version of this plot in ggplot 2!
+
+```{r}
+df <- as.data.frame(wisc.pr$x)
+df$diagnosis <- diagnosis
+library(ggplot2)
+ggplot(df) + 
+  aes(PC1, PC2, col=diagnosis) + 
+  geom_point()
+```
+
+> Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr$rotation[,1]) for the feature concave.points_mean?
+
+```{r}
+wisc.pr$rotation[,1]
+```
+The component loading loading vector for concave.points.mean is -0.26
+
+> Q10. What is the minimum number of principal components required to explain 80% of the variance of the data?
+
+The minimum number of principal components required to explain 80% of the variance is 4 PC's. You can see this via 
+```{r}
+y <- summary(wisc.pr)
+attributes(y)
+sum(y$importance[3,]<=0.8)
+```
+
+# 3. Hierarchical Clustering
+
+Lets make a cluster dendrogram that shows our results from the initial table
+```{r}
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled, method = "euclidian")
+wisc.hclust <- hclust(data.dist, method = "complete")
+plot(wisc.hclust)
+abline(h=18, col = "red" ,lty =2)
+```
+At height 18, there are 4 clusters below it.
+
+```{r}
+wisc.hclust.clusters <- cutree(wisc.hclust, k = 10)
+table(wisc.hclust.clusters, diagnosis)
+```
+> Q.12 Can you find a better cluster vs diagnoses match by cutting into a different number of clusters between 2 and 10?
+
+You can find other matches by changing the parameters, but it is hard to tell if the matches are "better" or not.
+
+> Q13. Which method gives your favorite results for the same data.dist dataset? Explain your reasoning.
+
+In this case, ward.D2 is my favorite method because it minimizes the variance within clusters. 
+
+# 5. Combining methods
+
+We need to create a model that is a dendrogram of the PCA results.
+
+```{r}
+wisc.pr.hclust <- hclust(data.dist, method = "ward.D2")
+plot(wisc.pr.hclust)
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+```
+```{r}
+table(grps, diagnosis)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+```
+```{r}
+plot(wisc.pr$x[,1:2], col=diagnosis)
+```
+```{r}
+g <- as.factor(grps)
+levels(g)
+```
+```{r}
+g <- relevel(g,2)
+levels(g)
+```
+```{r}
+plot(wisc.pr$x[,1:2], col=g)
+```
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[,1:7]), method="ward.D2")
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=4)
+table(wisc.pr.hclust.clusters, diagnosis)
+```
+
+> Q15. How well does the newly created model with four clusters separate out the two diagnoses?
+
+Four clusters does not split out particularly well because of group "3" which kind of has a lot in both categories. I liked the model with two groups better because it was simpler and easier to generalize as the mostly benign group and mostly malignant group.
+
+> Q16. How well do the k-means and hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+
+```{r}
+wisc.km <- kmeans(scale(wisc.data), centers= 2, nstart= 20)
+table(wisc.km$cluster, diagnosis)
+table(wisc.hclust.clusters, diagnosis)
+```
+It seems like they separated the diagnoses well, with the wisc.km cluster seemingly doing better than the PCA model because there is more separation between benign and malignant.
+
+> Q17. Which of your analysis procedures resulted in a clustering model with the best specificity? How about sensitivity?
+
+```{r}
+# For the kmeans method:
+175/(175+37)
+343/(343+37)
+# For the PCA method
+188/(188+24)
+329/(329+24)
+```
+Overall, it seems like PCA method resulted in better of both specificity and sensitivity.
+
