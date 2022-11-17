@@ -1,2 +1,3 @@
 # bimm143
-Bioinformatics class at UCSD
+Bioinformatics class (fall 2022) at UCSD
+
