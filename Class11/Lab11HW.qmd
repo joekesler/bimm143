@@ -1,0 +1,33 @@
+---
+title: "Lab11HW"
+author: "Joe Kesler"
+format: html
+---
+> Q13: Read this file into R and determine the sample size for each genotype and their 
+corresponding median expression levels for each of these genotypes.
+
+First, I will bring in the table
+
+```{r}
+rs <- read.table("rs8067378_ENSG00000172057.6.txt")
+head(rs)
+```
+
+Now I will determine the sample size.
+
+```{r}
+summary(rs)
+```
+
+The samples size is for each genotype is 462 and the median is 25.116
+
+> Q14: Generate a boxplot with a box per genotype, what could you infer from the relative 
+expression value between A/A and G/G displayed in this plot? Does the SNP effect the 
+expression of ORMDL3?
+
+```{r}
+library(ggplot2)
+ggplot(rs, aes(x = geno, y = exp)) +
+  geom_boxplot()
+```
+Those that are A/A clearly express more than G/G judging by the boxplot, so I would conclude that ORMDL3 does affect expression

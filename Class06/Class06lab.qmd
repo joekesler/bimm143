@@ -1,0 +1,159 @@
+---
+title: "Class06"
+author: "Joseph Kesler"
+date: "10/16/2022"
+format: html
+---
+This week we are introducing R functions and how to write our own.
+
+Q1. Write a function grade() to determine an overall grade from a vector of student homework
+assignment scores dropping the lowest single score.If a student misses a homework (i.e. has an
+NA value) this can be used as a score to be potentially dropped. Your final function should be
+adquately explained with code comments and be able to work on an example class gradebook
+such as this one in CSV format: “https://tinyurl.com/gradeinput” [3pts]
+
+```{r}
+#example vectors to start with
+student1 <- c(100,100,100,100,100,100,100,90)
+
+student2 <- c(100,NA,90,90,90,90,97,80)
+
+student3 <- c(90,NA,NA,NA,NA,NA,NA,NA)
+```
+
+Making a working snippet of code:
+
+```{r}
+mean(student1)
+```
+
+But we need to drop the lowest score. First we need to identify the lowest score.
+
+```{r}
+min(student1)
+```
+
+Is there another way?
+```{r}
+#which element of the vector is the lowest?
+which.min(student1)
+```
+
+What I want is to now drop this lowest score from my mean calculation.
+
+```{r}
+#This will return everything but the 8th element of the vector
+student1[-8]
+```
+
+Now we can use which.min() to return all the lowest elements.
+
+```{r}
+#This is our first working snippet
+mean(student1[-which.min(student1)])
+```
+
+We are now able to easily score 1 student. Will it work with the other students? In short, no because we have to do something with the NA's
+
+```{r}
+x <- student2
+is.na(x)
+which(is.na(x))
+```
+
+Now that we have identified the NA's, we want to mask 'em. Replace them with 0?
+
+```{r}
+x[is.na(x)] <- 0
+x
+mean(x)
+```
+
+Remember, we should drop the lowest score though 2. So lets combing the above bit with our fist snippet
+
+```{r}
+mean(x[-which.min(x)])
+```
+
+Lets try it for student 3 now.
+
+```{r}
+x <- student3
+x[is.na(x)] <- 0
+mean(x[-which.min(x)])
+```
+
+##now we make our heading
+
+Take the snippet and turn it into the function. Gotta give it a name, input arguments, and a body.
+
+I will select code in the Rstudio dashboard then extract funtion in the drop down
+
+```{r}
+grade <- function(x) {
+  x[is.na(x)] <- 0
+  mean(x[-which.min(x)])
+}
+```
+
+LETS RUN THE FUNCTION!
+
+```{r}
+grade(student1)
+grade(student2)
+grade(student3)
+```
+
+```{r}
+#This function calculates the average score for a vector of student scores dropping the lowest score. Missing values will be treated as 0.
+
+#' @param x A numeric vector of HW scores
+#' 
+#' @return Average score
+#' @export
+#' 
+#' @examples
+#' student <- c(100,NA,90,97)
+#' grade(student)
+
+grade <- function(x) {
+  x[is.na(x)] <- 0
+  mean(x[-which.min(x)])
+}
+```
+
+Now we can finally use the function on 'real' class data
+
+```{r}
+url <-  "https://tinyurl.com/gradeinput"
+gradebook <- read.csv(url, row.names = 1)
+
+```
+
+```{r}
+apply(gradebook, 1, grade)
+```
+
+>Q2. Using your grade() function and the supplied gradebook, Who is the top scoring student
+overall in the gradebook? [3pts]
+
+```{r}
+results <- apply(gradebook, 1, grade)
+sort(results,decreasing = TRUE)
+```
+
+```{r}
+which.max(results)
+```
+Student 18 is the top scorer
+
+>Q3. From your analysis of the gradebook, which homework was toughest on students (i.e. obtained
+the lowest scores overall? [2pts]
+
+```{r}
+apply(gradebook, 2, mean, na.rm = TRUE)
+```
+
+##HW 3 is the worst scoring HW
+
+

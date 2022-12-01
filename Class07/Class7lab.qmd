@@ -1,0 +1,222 @@
+---
+title: "Class 7 machine learning 1"
+author: "Joe Kesler"
+format: html
+---
+
+# K-means clustering
+
+First we will test how this method works in R with some made up data.
+
+```{r}
+x <- rnorm(10000)
+hist(x)
+```
+
+Let's make some numbers centered on -3 and +3
+
+```{r}
+tmp <- c(rnorm(30,-3), rnorm(30,+3))
+
+x <- cbind(x=tmp,y=rev(tmp))
+plot(x)
+```
+
+Now lets see how kmeans works.
+
+```{r}
+km <- kmeans(x,centers=2, nstart=20)
+km
+```
+
+> Q. How many points are in each cluster?
+
+```{r}
+km$size
+```
+
+> Q. What component of your result object details cluster assignment/membership?
+
+```{r}
+km$cluster
+```
+
+> what about the cluster centers?
+
+```{r}
+km$centers
+```
+
+> Q. Plot x colored by the kmeans cluster assignment and add cluster centers as blue points.
+
+```{r}
+plot(x, col= km$cluster)
+points(km$centers, col = "blue", pch=15, cex =2)
+```
+
+# Hierarchical Clustering
+
+The hclust() function in R performs hierarchical clustering
+
+The hclust() function requires an input distance matrix, which I can get from the dist() function.
+
+```{r}
+hc <- hclust(dist(x))
+```
+
+There is a plot hc method for hclust objects...
+
+```{r}
+plot(hc)
+```
+
+Now to get my cluster membership vector I need to "cut" the tree to yield seperate "branches" with the leaves of each branch being our clusters. To do this we use the cutree() function.
+
+```{r}
+cutree(hc, h=8)
+```
+
+use cutree() with k = 2
+```{r}
+grps <- cutree(hc,k=2)
+```
+
+A plot of our data colored by our hclust grps
+```{r}
+plot(x, col=grps)
+```
+
+# PCA = Principal Component Analysis
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url)
+```
+
+> Q1. How many rows and columns in your new data frame named x? 
+
+```{r}
+dim(x)
+```
+
+There are 17 rows and 5 columns
+
+```{r}
+head(x)
+```
+Uh oh
+```{r}
+rownames(x) <- x[,1]
+x <- x[,-1]
+head(x)
+```
+much better
+Lets check the dimensions again
+```{r}
+dim(x)
+```
+
+Ok, so there are 17 rows and FOUR columns.
+Here's another way to do what we just did:
+```{r}
+x <- read.csv(url, row.names=1)
+head(x)
+```
+
+
+> Q2 Which approach to solving the ‘row-names problem’ mentioned above do you prefer and why? Is one approach more robust than another under certain circumstances?
+
+I like the second approach better to solving the rownames problem because it tackles the problem more directly by reassigning the rownames rather than eliminating a column. If you repeatedly run it this first way, it will repeatedly remove columns.
+
+Lets plot our data to analyze trends!
+```{r}
+barplot(as.matrix(x), beside=T, col=rainbow(nrow(x)))
+```
+
+This is hard to get any info from. Lets try to replot better. 
+
+> Q3: Changing what optional argument in the above barplot() function results in the following plot?
+
+Changing beside = F will make the following plot:
+```{r}
+barplot(as.matrix(x), beside=F, col=rainbow(nrow(x)))
+```
+
+It's still unreadable though.
+
+> Q5: Generating all pairwise plots may help somewhat. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot?
+
+```{r}
+pairs(x, col=rainbow(10), pch=16)
+```
+Ok how do I read this and what is it showing me?
+Basically it is a plot matrix. All pairs are plotted against each other. It is still quite hard to read.
+
+> Q6. What is the main differences between N. Ireland and the other countries of the UK in terms of this data-set?
+
+For england and whales, it looks the same as they are all a straight line. Scotland looks pretty similar to england and whales too. But N.Ireland looks super different, it isn't in a straight line at all when compared to the rest. This still isn't that helpful though. How can we make this more interpretable?
+
+PCA to the rescue.
+The main PCA function in base R is called prcomp
+```{r}
+pca <- prcomp(t(x))
+summary(pca)
+```
+The above results show that PCA captures 67% of the total variance in the original data in one PC and 96.5% in two PC's.
+```{r}
+attributes(pca)
+```
+
+> Q7. Complete the code below to generate a plot of PC1 vs PC2. The second line adds text labels over the data points
+
+```{r}
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", xlim=c(-270,500))
+text(pca$x[,1], pca$x[,2], colnames(x))
+```
+
+> Q8. Customize your plot so that the colors of the country names match the colors in our UK and Ireland map and table at start of this document.
+
+```{r}
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", xlim=c(-270,500))
+text(pca$x[,1], pca$x[,2], colnames(x), col=(c("orange","red","blue","darkgreen")))
+```
+N.Ireland is clearly different from the others. 
+
+Digging Deeper
+
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,1], las=2 )
+```
+Here, we can see what pushed the countries to different sides of the plot. The irish love potatoes but despise alcoholic drinks and fresh fruit.
+
+> Q9: Generate a similar ‘loadings plot’ for PC2. What two food groups feature prominantely and what does PC2 maninly tell us about?
+
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,2], las=2 )
+```
+
+This PC2 plot above shows what pushes the countries on the plot up or down, while the PC1 plot showed us what pushed countries to the left or right.For example, we can say scotland likes soft drinks a lot more than the other countries from this plot.
+
+# PCA of RNA seq data
+
+```{r}
+url2 <- "https://tinyurl.com/expression-CSV"
+rna.data <- read.csv(url2, row.names=1)
+head(rna.data)
+```
+
+> Q10: How many genes and samples are in this data set?
+
+```{r}
+nrow(rna.data)
+ncol(rna.data)
+```
+There are 100 genes and 10 samples.
+
+```{r}
+pca <- prcomp(t(rna.data), scale=TRUE)
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2")
+```
+
